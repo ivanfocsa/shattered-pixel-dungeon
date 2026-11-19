@@ -88,6 +88,9 @@ public class Game implements ApplicationListener {
 		density = Gdx.graphics.getDensity();
 		if (density == Float.POSITIVE_INFINITY){
 			density = 100f / 160f; //assume 100PPI if density can't be found
+		} else if (DeviceCompat.isWeb()) {
+			//browsers report 96 PPI per CSS pixel, but a CSS pixel is roughly an Android dp (160 PPI)
+			density = Gdx.graphics.getDensity() * 160f / 96f;
 		} else if (DeviceCompat.isDesktop()) {
 			int dispWidth = Gdx.graphics.getDisplayMode().width;
 			int dispHeight = Gdx.graphics.getDisplayMode().height;

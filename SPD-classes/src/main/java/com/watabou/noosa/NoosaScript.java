@@ -75,6 +75,22 @@ public class NoosaScript extends Script {
 
 	public void drawElements( FloatBuffer vertices, ShortBuffer indices, int size ) {
 
+		if (DeviceCompat.isWeb()){
+			//WebGL has no client-side arrays, stream vertices and indices through buffers
+			streamVertices( vertices, vertices.limit() );
+			if (streamIBO == -1) streamIBO = Gdx.gl.glGenBuffer();
+			Gdx.gl.glBindBuffer( Gdx.gl.GL_ELEMENT_ARRAY_BUFFER, streamIBO );
+			int oldLimit = indices.limit();
+			((Buffer)indices).position( 0 );
+			((Buffer)indices).limit( size );
+			Gdx.gl.glBufferData( Gdx.gl.GL_ELEMENT_ARRAY_BUFFER, size * 2, indices, Gdx.gl.GL_STREAM_DRAW );
+			((Buffer)indices).limit( oldLimit );
+			((Buffer)indices).position( 0 );
+			Gdx.gl20.glDrawElements( Gdx.gl20.GL_TRIANGLES, size, Gdx.gl20.GL_UNSIGNED_SHORT, 0 );
+			Quad.bindIndices();
+			return;
+		}
+
 		((Buffer)vertices).position( 0 );
 		aXY.vertexPointer( 2, 4, vertices );
 
@@ -86,7 +102,31 @@ public class NoosaScript extends Script {
 		Quad.bindIndices();
 	}
 
+	//used on web (WebGL), which does not support client-side vertex arrays
+	private static int streamVBO = -1;
+	private static int streamIBO = -1;
+
+	private void streamVertices( FloatBuffer vertices, int floats ){
+		if (streamVBO == -1) streamVBO = Gdx.gl.glGenBuffer();
+		Gdx.gl.glBindBuffer( Gdx.gl.GL_ARRAY_BUFFER, streamVBO );
+		int oldLimit = vertices.limit();
+		((Buffer)vertices).position( 0 );
+		((Buffer)vertices).limit( Math.min( floats, vertices.capacity() ) );
+		Gdx.gl.glBufferData( Gdx.gl.GL_ARRAY_BUFFER, vertices.limit() * 4, vertices, Gdx.gl.GL_STREAM_DRAW );
+		((Buffer)vertices).limit( oldLimit );
+		((Buffer)vertices).position( 0 );
+		aXY.vertexBuffer( 2, 4, 0 );
+		aUV.vertexBuffer( 2, 4, 2 );
+		Gdx.gl.glBindBuffer( Gdx.gl.GL_ARRAY_BUFFER, 0 );
+	}
+
 	public void drawQuad( FloatBuffer vertices ) {
+
+		if (DeviceCompat.isWeb()){
+			streamVertices( vertices, 16 );
+			Gdx.gl20.glDrawElements( Gdx.gl20.GL_TRIANGLES, Quad.SIZE, Gdx.gl20.GL_UNSIGNED_SHORT, 0 );
+			return;
+		}
 
 		((Buffer)vertices).position( 0 );
 		aXY.vertexPointer( 2, 4, vertices );
@@ -114,6 +154,12 @@ public class NoosaScript extends Script {
 	public void drawQuadSet( FloatBuffer vertices, int size ) {
 		
 		if (size == 0) {
+			return;
+		}
+
+		if (DeviceCompat.isWeb()){
+			streamVertices( vertices, 16 * size );
+			Gdx.gl20.glDrawElements( Gdx.gl20.GL_TRIANGLES, Quad.SIZE * size, Gdx.gl20.GL_UNSIGNED_SHORT, 0 );
 			return;
 		}
 

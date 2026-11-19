@@ -533,7 +533,8 @@ public class Bundle {
 	}
 
 	public static boolean write( Bundle bundle, OutputStream stream ){
-		return write(bundle, stream, compressByDefault);
+		//TeaVM's GZIP implementation fails when flushing, so saves are left uncompressed on web
+		return write(bundle, stream, compressByDefault && !DeviceCompat.isWeb());
 	}
 
 	public static boolean write( Bundle bundle, OutputStream stream, boolean compressed ) {
