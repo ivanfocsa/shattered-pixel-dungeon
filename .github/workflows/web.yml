@@ -4,7 +4,8 @@ name: Web build
 
 on:
   push:
-    branches: [ master, main, web-port ]
+    branches: [ master, main ]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -13,7 +14,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: web-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -32,8 +33,10 @@ jobs:
         with:
           path: web/build/dist/js/release/webapp
 
+  # pull requests only check that the web version compiles
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
