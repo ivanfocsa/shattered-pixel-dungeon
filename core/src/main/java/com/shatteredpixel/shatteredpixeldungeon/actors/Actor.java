@@ -291,7 +291,7 @@ public abstract class Actor implements Bundlable {
 					}
 				}
 				
-				interrupted = interrupted || Thread.interrupted();
+				interrupted = interrupted || Thread.interrupted() || takeSoftInterrupt();
 				
 				if (interrupted){
 					doNext = false;
@@ -310,7 +310,7 @@ public abstract class Actor implements Bundlable {
 			if (!doNext){
 				synchronized (Thread.currentThread()) {
 					
-					interrupted = interrupted || Thread.interrupted();
+					interrupted = interrupted || Thread.interrupted() || takeSoftInterrupt();
 					
 					if (interrupted){
 						current = null;
@@ -331,6 +331,17 @@ public abstract class Actor implements Bundlable {
 		} while (keepActorThreadAlive);
 	}
 	
+	//used on web instead of Thread.interrupt(), see GameScene.waitForActorThread
+	public static volatile boolean softInterrupt = false;
+
+	private static boolean takeSoftInterrupt(){
+		if (softInterrupt){
+			softInterrupt = false;
+			return true;
+		}
+		return false;
+	}
+
 	public static void add( Actor actor ) {
 		add( actor, now );
 	}

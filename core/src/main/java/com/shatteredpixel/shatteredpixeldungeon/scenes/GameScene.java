@@ -146,6 +146,7 @@ import com.watabou.noosa.audio.Sample;
 import com.watabou.noosa.particles.Emitter;
 import com.watabou.noosa.tweeners.Tweener;
 import com.watabou.utils.Callback;
+import com.watabou.utils.DeviceCompat;
 import com.watabou.utils.GameMath;
 import com.watabou.utils.PlatformSupport;
 import com.watabou.utils.Point;
@@ -817,12 +818,27 @@ public class GameScene extends PixelScene {
 	public static void endActorThread(){
 		if (actorThread != null && actorThread.isAlive()){
 			Actor.keepActorThreadAlive = false;
-			actorThread.interrupt();
+			if (DeviceCompat.isWeb()){
+				//see waitForActorThread, interrupting is not safe on web
+				Actor.softInterrupt = true;
+				synchronized (actorThread) {
+					actorThread.notify();
+				}
+			} else {
+				actorThread.interrupt();
+			}
 		}
 	}
 
 	public boolean waitForActorThread(int msToWait, boolean interrupt){
 		if (actorThread == null || !actorThread.isAlive()) {
+			return true;
+		}
+		if (DeviceCompat.isWeb()){
+			//on web (TeaVM) the render loop cannot block and wait for another thread, and
+			// interrupting a waiting thread breaks its lock. Threads never run in parallel there,
+			// so the actor thread is already paused: we just ask it to stop the next time it runs.
+			if (interrupt) Actor.softInterrupt = true;
 			return true;
 		}
 		synchronized (actorThread) {
