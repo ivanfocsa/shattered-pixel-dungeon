@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Shattered Pixel Dungeon</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black">
+        <meta name="theme-color" content="#000000">
+        <link rel="icon" href="assets/icons/icon_32.png">
+        <link rel="apple-touch-icon" href="assets/icons/icon_256.png">
+        <style>
+            html, body {
+                background: #000;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                overscroll-behavior: none;
+                -webkit-user-select: none;
+                user-select: none;
+                -webkit-touch-callout: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            #canvas {
+                display: block;
+                border: none;
+                touch-action: none;
+                outline: none;
+            }
+        </style>
+    </head>
+    <body oncontextmenu="return false">
+        <canvas id="canvas" tabindex="0"></canvas>
+        <script>
+            window.addEventListener("load", function () { main(); });
+        </script>
+        <script type="text/javascript" charset="utf-8" src="app.js"></script>
+    </body>
+</html>

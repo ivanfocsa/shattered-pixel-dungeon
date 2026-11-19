@@ -1,0 +1,109 @@
+import org.teavm.gradle.api.OptimizationLevel
+
+plugins {
+    id 'com.github.xpenatan.gdx-teavm' version '1.6.2'
+}
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+java.sourceCompatibility = java.targetCompatibility = JavaVersion.VERSION_17
+
+def webMain = "com.shatteredpixel.shatteredpixeldungeon.web.WebLauncher"
+
+// Generate a small class with the version info (no jar manifest on the web)
+def genDir = layout.buildDirectory.dir("generated/version")
+tasks.register('genVersion') {
+    outputs.dir genDir
+    doLast {
+        def f = genDir.get().file("com/shatteredpixel/shatteredpixeldungeon/web/WebVersion.java").asFile
+        f.parentFile.mkdirs()
+        f.text = """package com.shatteredpixel.shatteredpixeldungeon.web;
+public final class WebVersion {
+    public static final String TITLE = "${appName}";
+    public static final String NAME = "${appVersionName}-web";
+    public static final int CODE = ${appVersionCode};
+}
+"""
+    }
+}
+sourceSets.main.java.srcDir genDir
+compileJava.dependsOn 'genVersion'
+
+// list of every game class, so that TeaVM lets saves recreate them by name (see SPDTeaVMPlugin)
+def classListDir = layout.buildDirectory.dir("generated/classlist")
+tasks.register('genClassList') {
+    dependsOn ':core:compileJava', ':SPD-classes:compileJava'
+    def roots = [project(':core'), project(':SPD-classes')].collect { it.layout.buildDirectory.dir('classes/java/main').get().asFile }
+    inputs.files roots
+    outputs.dir classListDir
+    doLast {
+        def names = []
+        roots.each { root ->
+            root.eachFileRecurse { f ->
+                if (f.name.endsWith('.class')) {
+                    names << root.toPath().relativize(f.toPath()).toString().replace(File.separator, '.').replaceAll(/\.class$/, '')
+                }
+            }
+        }
+        def out = classListDir.get().file('spd-classes.txt').asFile
+        out.parentFile.mkdirs()
+        out.text = names.sort().join('\n')
+    }
+}
+sourceSets.main.resources.srcDir classListDir
+processResources.dependsOn 'genClassList'
+
+dependencies {
+    implementation project(':core')
+    implementation project(':services:updates:debugUpdates')
+    implementation project(':services:news:debugNews')
+    implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+    implementation "com.github.xpenatan.gdx-teavm:gdx-freetype-web:1.6.2"
+    implementation "com.github.xpenatan.gdx-teavm:gdx-controllers-web:1.6.2"
+}
+
+gdxTeaVM {
+    assets.from(new File(project(':core').projectDir, "src/main/assets"))
+    assets.from(new File(project(":desktop").projectDir, "src/main/assets"))
+
+    webDefaults {
+        mainClass.set(webMain)
+        htmlTitle.set(appName)
+        obfuscated.set(false)
+        generateIndexHtml.set(false)
+    }
+
+    // development build: readable JavaScript, ./gradlew web:gdx_teavm_web_js_run
+    js {
+        optimization.set(OptimizationLevel.BALANCED)
+        serverPort.set(8080)
+        outOfProcess.set(true)
+        processMemory.set(6144)
+    }
+
+    // release build (smaller download): ./gradlew web:gdx_teavm_web_js_release_build
+    js("release") {
+        optimization.set(OptimizationLevel.BALANCED)
+        obfuscated.set(true)
+        serverPort.set(8180)
+        outOfProcess.set(true)
+        processMemory.set(6144)
+    }
+}
+
+// our own index.html (mobile viewport, touch handling, icons)
+tasks.matching { it.name == 'gdx_teavm_web_js_build' }.configureEach {
+    doLast {
+        copy {
+            from 'src/main/webapp'
+            into layout.buildDirectory.dir('dist/js/webapp')
+        }
+    }
+}
+tasks.matching { it.name == 'gdx_teavm_web_js_release_build' }.configureEach {
+    doLast {
+        copy {
+            from 'src/main/webapp'
+            into layout.buildDirectory.dir('dist/js/release/webapp')
+        }
+    }
+}
